@@ -1,5 +1,5 @@
 #!/bin/bash
-# sm-c.sh by Wiesław Magusiak (2013-07-15)
+# sm-c.sh v1.1 by Wiesław Magusiak (2013-07-31)
 # A "sendmail" replacement. Requires "msmtp" installed.
 # Put this script anywhere (e.g. /usr/local/bin/) and create a symbolic link:
 # 
@@ -16,11 +16,14 @@
 #
 # Some advice:
 # (1) Do not make cron/cronie call msmtp instead of sendmail; Calling sendmail is default.
-# (2) Do nor make mailx call msmtp. By default it will call sendmail.
-# (3) Create sendmail as a symbolic link to this script.
+# (2) Do not make mailx call msmtp. By default it will call sendmail.
+# (3) If you install this script with its package, it will check dependecies and conflicts,
+#     and will create sendmail as a symbolic link to this script.
+#     Otherwise, put the script somewhere (e.g. /usr/local/bin/) and create the symbolic
+#     manually.
 # (4) The language/charset settings for cron/cronie are different from those 
 #     set in the linux system. Put these settings in your user cronjobs file (crontab -e).
-#     Here is an example with the Polish language settings.
+#     Here is an example with Polish language settings.
 #       LANG=pl_PL.UTF-8
 #       LANGUAGE=pl
 #       LC_CTYPE=pl_PL.UTF-8
@@ -30,37 +33,46 @@
 #     you do not set your language for cron, but will not help if special characters
 #     are in your subject line.
 #     Remember to set the charset below.
-# (4) With this script, you will be able to send e-mail messages with attachments
+# (4) With this script and mailx, you will be able to send e-mail messages with attachments
 #     from cron/cronie.
 # ---------------------------------------------------------------------------------- #
 # This is a fully functional script stuffed with a lot of lines for debugging.       #
-# Check "$DEBUG" after mailx has been called directly or cron sent an email message.  #
+# Check "$DEBUG" after mailx has been called directly or cron sent an email message. #
 # You can safely remove all "debugging parts" from the script below.                 #
 # ---------------------------------------------------------------------------------- #
 
-DEBUG="/dev/null"
+PARAMS="$@"			# Parameters sendmail is called with
+TO=0				# E-mail address(es)
+MSG="$(cat)"		# Message contents passed to sendmail
+CS="charset=utf-8"	# Charset for email. 
+					# Needs to be set when mailx is called by cron/cronie.
+U=$USER 			# If sendmail is called from cron, U=""
+
+
 if [[ -f ~/.sm-c.conf ]]; then
 	D=$(grep ^debug ~/.sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
 elif [[ -f /etc/sm-c.conf ]]; then
 	D=$(grep ^debug /etc/sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
 fi
 
-[[ "$D" == "1" || "$D" == "[Yy]" || "$D" == "[yY][eE][sS]" ]] && DEBUG=/tmp/sm-${USER}.log
-	
-PARAMS="$@"			# Parameters sendmail is called with
-TO=0				# E-mail address(es)
-MSG="$(cat)"		# Message contents passed to sendmail
-CS="charset=utf-8"	# Charset for email. 
-					# Needs to be set when mailx is called by cron/cronie.
-MSMTP="$(which msmtp)"
+[[ "$D" == "1" || "$D" == "[Yy]" || "$D" == "[yY][eE][sS]" ]] \
+	&& DEBUG=/tmp/sm-${U}-$(date +%H%M%S).log || DEBUG="/dev/null"
+
+SMTPF="$(which msmtp)"
 
 # ---- Debugging part ------------------
 if [ -n "$DEBUG" ]; then
-	echo -e "The sendmail call from a program:\n\t$0 $@" > "$DEBUG"
-	echo "-------------------" >> "$DEBUG"
-	echo -n "Called from " >> "$DEBUG"
-	[[ -t 1 ]] && echo "a terminal" >> "$DEBUG" || echo "not-a-terminal" >> "$DEBUG"
+	#echo -e "The sendmail call by $(ps -p $(ps -p $$ -o ppid=) -o comm=):\n\t$0 $@" > "$DEBUG"
+	echo -e "$(LANG=C date)\nThe sendmail call:\n\t$0 $@" > "$DEBUG"
+	echo -n "called from " >> "$DEBUG"
+	[[ -t 1 ]] && echo -e "a terminal." >> "$DEBUG" || echo "not a terminal" >> "$DEBUG"
 	#[[ -t 1 || -t 0 ]] && echo "a terminal" >> "$DEBUG" || echo "not a terminal" >> "$DEBUG"
+	echo "-------------------" >> "$DEBUG"
+	echo -e "USER=${U} \tLANG=$LANG" >> "$DEBUG"
+	echo -e "PID  \$\$    = $$\t$(ps -p $$ -o comm=)" >> "$DEBUG"
+	echo -e "PPID \$PPID = $PPID\t$(ps -p $PPID -o comm=)" >> "$DEBUG"
+	#cat /proc/$$/status | grep PPid: | grep -o "[0-9]*" >> "$DEBUG"
+	#cat /proc/$$/status | grep Pid: | grep -o "[0-9]*" >> "$DEBUG"
 	echo "-------------------" >> "$DEBUG"
 fi
 # ---- End of debugging part -----------
@@ -78,11 +90,11 @@ if [  "$1" = '-i'  ]; then
 	MSG="${MSG/Type: application\/octet-stream/Type: text\/plain; $CS}"
 	# ---- Debugging part ------------------
 	if [ -n "$DEBUG" ]; then
-        	# Check how option -t (below) works if $MSG contains a "To: " line.
+        # Addressee as specified in $MSG, in the "To: " line.
 		kk="$(echo "$MSG" | grep -m 1 'To: ')"
         kk="${kk:4}"
 		if [[ -n "$kk" ]]; then
-			echo -e "Check how option -t works. This should be the adress line:\n$kk"  >> "$DEBUG"
+			echo -e "Addressee as in the email-header lines:\n$kk"  >> "$DEBUG"
 			echo "-------------------" >> "$DEBUG"
 		fi
 	fi
@@ -101,7 +113,7 @@ elif [ "$1" = '-FCronDaemon' ]; then
 		#-----Find email addresses and remove commas between them if any.
 		TO="$(grep "$RECIP:" /etc/aliases|cut -d: -f2|sed "s/\, / /g"|sed "s/ *$//g")"
 		TO="-i$TO"	# $TO starts with a space here.
-            #-----Unnecessary or even wrong, but satisfies my aesthetic taste (in thunderbird)----------
+            #-----Unnecessary, but satisfies my aesthetic taste (in thunderbird)------------------------
 			TO1="$(echo "$TO"|cut -d\  -f2)"        # To have just one sender/adressee displayed
 			MSG="${MSG/To: $RECIP/To: $TO1}"		# Replace "To: $RECIP" with "To: $TO"
 			MSG="${MSG/From: $RECIP/From: $TO1}"	# Replace "From: $RECIP" with "From: $TO"
@@ -122,19 +134,29 @@ elif [ "$1" = '-FCronDaemon' ]; then
 
 # other programs
 elif [ "$1" = '-t' ]; then  # most other programs (which?) call sendmail with a -t option
+	if [ -n "$DEBUG" ]; then
+		echo "Mail sent with the -t parameter" >> "$DEBUG"
+		echo "-------------------" >> "$DEBUG"
+	fi
 	TO="$(echo "$MSG" | grep -m 1 'To: ')"
 	TO="-i ${TO:4}"
 else
+	if [ -n "$DEBUG" ]; then
+		echo "* Mail sent without parameters or not recognised ones." >> "$DEBUG"
+		echo "* Most likely the message will be prepared but NOT SENT." >> "$DEBUG"
+		echo "* Expect an error message like 'No recepients found'" >> "$DEBUG"
+		echo "-------------------" >> "$DEBUG"
+	fi
 	TO="$PARAMS" 	# Just the original parameter(s) sendmail was called with.
 fi
 
 # ---- Debugging part ------------------
 if [ -n "$DEBUG" ]; then
-	echo "The arguments for msmtp: $TO" >> "$DEBUG"
+	echo "The arguments for ${SMTPF##*/}: $TO" >> "$DEBUG"
 	echo -------e-mail_structure------- >> "$DEBUG"
 	echo -e "$MSG" >> "$DEBUG"
 	echo -------end_of_email----------- >> "$DEBUG"
 fi
 # ---- End of debugging part -----------
 
-echo -e "$MSG" | "$MSMTP" $TO
+echo -e "$MSG" | "$SMTPF" $TO
