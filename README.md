@@ -10,12 +10,22 @@ Put the sm-c.sh script anywhere (e.g. /usr/local/bin/) and create a symbolic lin
 
     ln -s /usr/local/bin/find_email_aliases.sh /usr/bin/sendmail
 
+Please note that sm-c conflicts with mta-msmtp which does nothing but create the "/usr/bin/sendmail" symbolic link to msmtp.
+Uninstalling msmtp-mta is recommended, but the msmtp package must remain unstalled.
+
+
+ALTERNATIVE INSTALLATION
+
+A PKGBUILD for Arch Linux is now available here.
+Dependencies: msmtp
+Conflicts:    msmtp-mta, esmtp, ssmtp
+
 
 HISTORY
 - Jim Lofft 06/19/2009, find_alias_for_msmtp.sh
 - Changed by Ovidiu Constantin <ovidiu@mybox.ro> && http://blog.mybox.ro/
 
-Reworked heavily by Wiesław Magusiak (wiemag)/(dif) and tested with mailx and cron/cronie 
+Reworked heavily by Wiesław Magusiak (wm)/(wiemag)/(dif) and tested with mailx and cron/cronie 
 (both calling /usr/bin/sendmail)
 
 
