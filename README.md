@@ -17,8 +17,8 @@ Removing msmtp-mta is recommended, but the msmtp package must remain installed.
 ALTERNATIVE INSTALLATION
 
 A PKGBUILD for Arch Linux is now available here.
-Dependencies: msmtp
-Conflicts:    msmtp-mta, esmtp, ssmtp
+- Dependencies: msmtp
+- Conflicts:    msmtp-mta, esmtp, ssmtp
 
 
 HISTORY
