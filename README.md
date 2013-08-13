@@ -37,5 +37,6 @@ SOME ADVICE
    -   LANG=pl_PL.UTF-8
    -   LANGUAGE=pl
    -   LC_CTYPE=pl_PL.UTF-8
+
    If you do not put these into your cronjobs file, you may not be able to send mail if there are any "language" characters in the subject line. This script will help you avoid problems with charset in the contents of your mail even if you do not set your language for cron, but will not help if special characters are in your subject line. The charset is set to utf-8 in the script (see the CS variable). You can change it manually after installation.
 4. With this script, you will be able to send e-mail messages with attachments from cron/cronie.
