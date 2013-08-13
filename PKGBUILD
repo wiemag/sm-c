@@ -1,7 +1,7 @@
 # Wiesław Magusiak <w.magusiak@gmail.com>
 pkgname=sm-c
 pkgver=1.1
-pkgrel=1
+pkgrel=2
 pkgdesc="sendmail connector"
 arch=('i686' 'x86_64')
 url="http://github.com/wiemag/sm-c"
@@ -18,7 +18,7 @@ install=
 changelog=
 source=(https://github.com/wiemag/sm-c/archive/v${pkgver}.tar.gz)
 noextract=()
-md5sums=('706b1ab61288738fa7038fe1a5eca53e')
+md5sums=('2ec6a2ec5e46bf6e5c1cbf59d5ac5a9d')
 package() {
 	cd "$srcdir/${pkgname}-$pkgver"
 	mkdir -p ${pkgdir}/usr/bin/
