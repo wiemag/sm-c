@@ -1,0 +1,125 @@
+.\" Man pages for sm-c (sendmail-connector)
+
+.TH man 1 "2014-03-07" "0.01" "sm-c (sendmail-connector) man pages"
+
+.SH NAME
+.B "sm-c (sendmail-connector)"
+
+The "sm-c" package provides a sendmail-connector script (sm-c) that comes between the sendmail symbolic link and the msmtp, an SMTP client. Effectively, sm-c connects a mail user agent (MUA) such as s-nails' or heirloom-mailx's mail(x) to msmtp.
+
+.SH SYNOPSIS
+Invoked automatically by any program calling sendmail as through the installation process, the sendmail symbolic link points at sm-c. For example, the mail(x) program provided by s-nail or hairloom-mailx typically calls sm-c with the following parmeters:
+.br
+.RS
+.B sm-c
+-i \fB<recipient 1>
+\fR[\fB<recipient 2>\fR] [\fB...\fR] [\fB<recipient N>\fR]
+.RE
+.PP
+where the recipients are users' login names or e-mail address.
+.PP
+\fBsm-c\fR can be invoked manually the way msmtp can.
+.br
+
+.SH "DESCRIPTION"
+Sendmail-connector
+.IP \[bu]
+replaces users' login names with their e-mail addresses as specified in /etc/aliases;
+.br
+If a login name is not defined in /etc/aliases sm-c drops such a recipient.
+.IP \[bu]
+gives debugging data showing the e-mail message source and recepients;
+.br
+The debugging is switched on with an option in /etc/sm-c.conf or ~/.sm-c.conf.
+.br
+   debug=1 (or debug=yes)
+.br
+The file is not created in the installation process. It has to be created by user if debugging is supposed to work.
+.br
+The debugging log is made into /tmp/sm-${USER}-$(date +%H%M%S).log files.
+.IP \[bu]
+comes in handy when cron(ie) reports events or notifies about errors;
+.IP \[bu]
+corrects the charset in the contents of e-mail message;
+.br
+UTF-8 charset is hardcoded into the script. Find the "CS" variable and change it to your liking.
+.br
+The language/charset settings for cron/cronie are different from those set in the linux system. Put these settings in your user cronjobs file (crontab -e).
+.br
+Here is an example with Polish language settings.
+.br
+
+   LANG=pl_PL.UTF-8
+.br
+   LANGUAGE=pl
+.br
+   LC_CTYPE=pl_PL.UTF-8
+.br
+
+If you do not put these into your cronjobs file, you will not be able to send mail if there are any "language" characters in the subject line. This script will help you avoid problems with charset in the contents of your mail even if you do not set your language for cron, but will not help if special characters are in your subject line.
+
+
+
+.SH OPTIONS AND PARAMETERS
+.TP
+.B -i
+.br
+This option is the first option that \fUmail(x)\fR passes to sm-c (and then to msmtp).
+.TP
+.B -FCronDaemon
+If sm-c is invoked by \fUcron(ie)\fR notification mechanism, "\fB-FCronDaemon\fR" is the first option passed to sm-c/msmtp.
+.TP
+.B recipient
+.br
+The recipient should be a proper (domain) e-mail address. Any host system $USER may also be used providing the \fI/etc/aliases\fR file holds the \fIproper address(es)\fR for the $USER. If there are no e-mail addresses for the $USER defined in /etc/aliases, such $USER is dropped from the recipients list.
+
+.PP
+When sm-c is called manually, try using options as defined for msmtp.
+
+.TP
+.B -t
+.br
+The "-t" option tells msmtp to source TO, CC, BCC adresses from the message contents passed.
+
+.PP
+It is possible to pass extra options from mail(x) to sm-c by using the "-O" option. However, it is important that the option that is being passed on be "glued to the mail(x)'s -O option, e.g.
+.br
+
+      mail -t \fB-O-Nsuccess,failure,delay\fR root
+
+.br
+will pass "-Nsuccess,failure,delay" to sm-c/msmtp.
+.PP
+
+.SH INSTALLATION
+Something about installation.
+Dependencies.
+
+.SH CONFIGURATION AND USAGE OF THE SERVICE
+Configuration files ~/.sm-c.conf and /etc/sm-c.conf
+
+.SH HISTORY
+.TP
+Something about history.
+
+.SH SEE ALSO
+.TP
+.B /etc/aliases
+Read about the sendmail's aliases file (/etc/aliases). For instance here:
+.RS
+.I 	http://www.gsp.com/cgi-bin/man.cgi?topic=aliases
+.br
+However, note that in this case \fI/etc/aliases\fR must contain domain type e-mail address(es).
+.RE
+
+.SH BUGS
+Please contact the author if you find any.
+
+.SH AUTHOR
+.AU
+Wiesław Magusiak <w.magusiak at gmail . com>
+
+.SH COPYRIGHT
+No warranty is given, and no responsible is taken for the use.
+.br
+Latest GPL.

@@ -1,8 +1,9 @@
 #!/bin/bash
 # sm-c.sh v1.1 by Wiesław Magusiak (2013-07-31)
+# sm-c.sh v1.4 (2014-03-07)
 # A "sendmail" replacement. Requires "msmtp" installed.
 # Put this script anywhere (e.g. /usr/local/bin/) and create a symbolic link:
-# 
+#
 # 	# ln -s /usr/local/bin/find_email_aliases.sh /usr/bin/sendmail
 #
 # If called from cron/cronie, the script scans the /etc/alias file for valid domain
@@ -21,19 +22,15 @@
 #     and will create sendmail as a symbolic link to this script.
 #     Otherwise, put the script somewhere (e.g. /usr/local/bin/) and create the symbolic
 #     manually.
-# (4) The language/charset settings for cron/cronie are different from those 
+# (4) The language/charset settings for cron/cronie are different from those
 #     set in the linux system. Put these settings in your user cronjobs file (crontab -e).
 #     Here is an example with Polish language settings.
 #       LANG=pl_PL.UTF-8
 #       LANGUAGE=pl
 #       LC_CTYPE=pl_PL.UTF-8
-#     If you do not put these into your cronjobs file, you will not be able to send
-#     mail if there are any "language" characters in the subject line. This script
-#     will help you avoid problems with charset in the contents of your mail even if
-#     you do not set your language for cron, but will not help if special characters
-#     are in your subject line.
-#     Remember to set the charset below.
-# (4) With this script and mailx, you will be able to send e-mail messages with attachments
+#     Failing to do that may lead to your not being able to send e-mail.
+#     It is an error in system, not in sm-c.
+# (5) With this script and mailx, you will be able to send e-mail messages with attachments
 #     from cron/cronie.
 # ---------------------------------------------------------------------------------- #
 # This is a fully functional script stuffed with a lot of lines for debugging.       #
@@ -41,13 +38,57 @@
 # You can safely remove all "debugging parts" from the script below.                 #
 # ---------------------------------------------------------------------------------- #
 
-PARAMS="$@"			# Parameters sendmail is called with
+PARAMS=" $@ "		# Parameters sendmail is called with
 TO=0				# E-mail address(es)
 MSG="$(cat)"		# Message contents passed to sendmail
-CS="charset=utf-8"	# Charset for email. 
+CS="charset=utf-8"	# Charset for email.
 					# Needs to be set when mailx is called by cron/cronie.
 U=$USER 			# If sendmail is called from cron, U=""
 
+PREFIX=${PARAMS% -*}
+	echo PARAMS=:$PARAMS:
+	echo PREFIX=:$PREFIX:
+if [[ "$PARAMS" = "$PREFIX" ]]; then
+	PREFIX=""
+	RECIP="$PARAMS"
+	echo równe
+else
+	echo nierówne
+	RECIP=${PARAMS#$PREFIX }
+	echo recip=$RECIP
+	RECIP=${RECIP#-* }
+	echo recip=$RECIP
+	PREFIX=${PARAMS% $RECIP}
+fi
+	echo PARAMS=$PARAMS
+	echo PREFIX=$PREFIX
+z=""
+if [[ -f /etc/aliases ]]; then  	# Does the file exist?
+	if [[ -n "$RECIP" ]]; then
+		# Make sure recipient addresses are "@domain" style ones
+		for x in $RECIP; do 		# Important! No quotation marks here!
+			if [[ $x = *@* ]]; then
+				z=$z" $x"
+			else
+				y="$(grep "$x:" /etc/aliases|cut -d: -f2|sed 's/\, / /g'|sed 's/ *$//g')"
+				# Recepient without "@domain" who is not listed in /etc/aliases gets eliminated.
+				z=$z"$y"
+			fi
+		done 						# z has a leading space
+	fi
+else
+		for x in $RECIP; do 		# Important! No quotation marks here!
+			if [[ $x = *@* ]]; then
+				z=$z" $x"
+			else
+				# Recepient without "@domain" who is not listed in /etc/aliases gets eliminated.
+				: 					# continue
+			fi
+		done 						# z has a leading space
+fi
+PARAMS="${PREFIX# }${z}" 			# PREFIX holds options; z holds addresses (may be empty, too)
+echo PREFIX=${PREFIX# }
+echo Adresy=${z}
 
 if [[ -f ~/.sm-c.conf ]]; then
 	D=$(grep ^debug ~/.sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
@@ -78,10 +119,13 @@ fi
 # ---- End of debugging part -----------
 
 # mailx calls sendmail with -i as the first parameter and addresses as the following parameters
-if [  "$1" = '-i'  ]; then
+# Warning: mailx sorts parameters moving those with hyphens before those without hyphens!
+# Advice: If you pass parameters with -O, put no spaces between -O and the past paarameters/valuses.
+# 
+if [  "$1" = '-i'  ]; then 		# Strong assumption: Called by mailx
 	# No shift of parameters to include the "-i" flag in $TO
 	#shift
-	TO="$@"
+	TO="$PARAMS"
 	# If mailx is called from cron and no language settings are put into user's cronjobs file,
     # the "Content-Type" part of an email header has to be changed
 	# from  Content-Type: application/octet-stream
@@ -133,13 +177,12 @@ elif [ "$1" = '-FCronDaemon' ]; then
 	# ---- End of debugging part -----------
 
 # other programs
-elif [ "$1" = '-t' ]; then  # most other programs (which?) call sendmail with a -t option
-	if [ -n "$DEBUG" ]; then
+elif [ "$1" = '-t' ]; then  	# This and the next "else" could be combined, but
+	if [ -n "$DEBUG" ]; then 	# I want them separate at least for debugging reasons
 		echo "Mail sent with the -t parameter" >> "$DEBUG"
 		echo "-------------------" >> "$DEBUG"
 	fi
-	TO="$(echo "$MSG" | grep -m 1 'To: ')"
-	TO="-i ${TO:4}"
+	TO="$PARAMS" 		# -t draws addresses from $MSG automatically
 else
 	if [ -n "$DEBUG" ]; then
 		echo "* Mail sent without parameters or not recognised ones." >> "$DEBUG"
