@@ -1,6 +1,6 @@
 .\" Man pages for sm-c (sendmail-connector)
 
-.TH man 1 "2014-03-07" "0.01" "sm-c (sendmail-connector) man pages"
+.TH man 1 "2014-03-07" "1.5" "sm-c (sendmail-connector) man pages"
 
 .SH NAME
 .B "sm-c (sendmail-connector)"
@@ -61,6 +61,30 @@ If you do not put these into your cronjobs file, you will not be able to send ma
 
 
 .SH OPTIONS AND PARAMETERS
+
+The options used with sm-c are those used with msmtp.
+.br
+There is only one option extra/specific for sm-c: the '-Z' option.
+.TP
+.B -Z
+.br
+This option adds a read-confirmation request to the e-mail message header.
+.br
+\fBThe "-Z" flag can only be used when it is passed to sm-c by an MUA like mail(x).\fR Other MUA's were not tested. \fBA direct manual passing -Z to sm-c does not work.\fR This would be an extra msmtp feature, but it has not been implemented. The disposition to request for a read confirmation is added to the e-mail header created by MUA (e.g. mail(x)) instead.
+.RS
+
+An example of passing -Z to sm-c:
+
+.br
+	mailx -O -Z
+.br
+	mailx -O-Z
+.br
+
+\fBNote that this is different from DSN (delivery status notification)\fR. A DSN is requested by the "-N" msmtp option. See the mail(x) "-O" option below and read the msmtp man pages.
+.RE
+.PP
+Other options:
 .TP
 .B -i
 .br
@@ -79,38 +103,82 @@ When sm-c is called manually, try using options as defined for msmtp.
 .TP
 .B -t
 .br
-The "-t" option tells msmtp to source TO, CC, BCC adresses from the message contents passed.
+The "-t" option tells msmtp to source TO, CC, BCC adresses from the message contents passed. The "-t" option works the same way with mail(x).
 
 .PP
-It is possible to pass extra options from mail(x) to sm-c by using the "-O" option. However, it is important that the option that is being passed on be "glued to the mail(x)'s -O option, e.g.
+It is possible to pass extra options from mail(x) to sm-c by using the "-O" option. However, it is important that if the option that is being passed has additional attributes those addributes must be "glued to the msmtp's -O option, e.g.
 .br
 
-      mail -t \fB-O-Nsuccess,failure,delay\fR root
+      mail -t \fB-O -Nsuccess,failure,delay\fR
 
 .br
-will pass "-Nsuccess,failure,delay" to sm-c/msmtp.
+will pass "-Nsuccess,failure,delay" to sm-c/msmtp. It requests a DSN (delivery-state-notification). None of servers used by AUTHOR had the DSN feature enabled, though.
+
 .PP
+.SH DEPENDENCIES AND PROGRAMS SM-C WORKS WITH
+.PP
+Dependencies include typical functions:  grep, sed.
+.PP
+As sm-c (sendmail-connector) is a connector, it needs programs it connects. Whether they are technically dependencies is a matter of semantics. The author thinks them dependencies.
+.TP
+.B msmtp
+sm-c requires the msmtp package to be installed. Other smtp clients were not tested, but may work except for the -Z option described above.
+.TP
+\fBs-nail\fR/\fBheirloom-mailx\fR providing mail/mailx programs [optional, highly recommended]
+.br
+In order to be able to send e-mails with attachments and to request read conformations (the -Z flag), the user has to install the s-nail package (or heirloom-mailx).
 
 .SH INSTALLATION
-Something about installation.
-Dependencies.
+As sm-c is a bash script it could be installed manually by creating a sendmail symbolic link (/usr/bin/sendmail) or replacing an existing one with a new one that points at sm-c.
+.PP
+The automatic installation with PKGBUILD checks conflicts and \fBinstalls msmtp as a dependency\fR (!). It also installs this manual.
+.br
+Note that the s-nail/heirloom-mailx package is not installed automatically.
 
-.SH CONFIGURATION AND USAGE OF THE SERVICE
-Configuration files ~/.sm-c.conf and /etc/sm-c.conf
+.SH CONFIGURATION, USE AND EXAMPLES
+.PP
+.IP \[bu]
+Configuration file ~/.sm-c.conf (alternatively /etc/sm-c.conf) holds only one option:
+.RS
+debug=1 (or yes/Yes; anything else means 'no')
+.RE
+.IP \[bu]
+There is no need to make cron/cronie call sm-c (or msmtp directly). Do not change anything and just let cron/cronie call sendmail, which it does by default.
+.IP \[bu]
+The same regards mail(x) - do not make it call sm-c or msmtp. Let is call sendmail, and madify only the sendmail link if necessary. The installation process does it for you.
+.IP \[bu]
+For sm-c to work correctly with cron/cronie, you must put your langage settings into your cronjobs file. Run "crontab -e" and put these or similar settings. These are for the Polish lan
+If a login name is not defined in /etc/aliases sm-c drops such a recipient.
+gage.
+.RS
+      LANG=pl_PL.UTF-8
+.br
+      LANGUAGE=pl
+.br
+      LC_CTYPE=pl_PL.UTF-8
+.br
+Failing to do that may result in your not being able to send e-mail when the subject line has your national language special characters. It is caused by the system, not sm-c.
+.RE
+.IP \[bu]
+Note that when used by cron/cronie, sm-c will be sending to the $USER all output of commands in the cronjob file. To avoid it use '>/dev/null' after each command in the conjobs file (crontab).
 
 .SH HISTORY
-.TP
-Something about history.
+.PP
+The idea to create sm-c was based on Jim Lofft's script find_alias_for_msmtp.sh (06/19/2009) and the changes to the script by Ovidiu Constantin <ovidiu@mybox.ro> && http://blog.mybox.ro.
+.PP
+The sm-c script was first a heavily modified version of find_alias_for_mstp.sh (July 2013). Tests were made with mailx and cron/cronie (both calling /usr/bin/sendmail, a symlink to msmtp).
+In March 2014 the -Z option was added and further modification made to effectively turn sm-c into a new script.
 
 .SH SEE ALSO
-.TP
-.B /etc/aliases
+.IP \[bu]
 Read about the sendmail's aliases file (/etc/aliases). For instance here:
 .RS
 .I 	http://www.gsp.com/cgi-bin/man.cgi?topic=aliases
-.br
-However, note that in this case \fI/etc/aliases\fR must contain domain type e-mail address(es).
 .RE
+.IP \[bu]
+msmtp man pages
+.IP \[bu]
+s-nail (heirloom-mailx) man pages
 
 .SH BUGS
 Please contact the author if you find any.

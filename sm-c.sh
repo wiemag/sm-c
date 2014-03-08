@@ -1,6 +1,6 @@
 #!/bin/bash
 # sm-c.sh v1.1 by Wiesław Magusiak (2013-07-31)
-# sm-c.sh v1.4 (2014-03-07)
+# sm-c.sh v1.5.1 (2014-03-08)
 # A "sendmail" replacement. Requires "msmtp" installed.
 # Put this script anywhere (e.g. /usr/local/bin/) and create a symbolic link:
 #
@@ -8,12 +8,6 @@
 #
 # If called from cron/cronie, the script scans the /etc/alias file for valid domain
 # email addresses and calls msmtp (http://msmtp.sourceforge.net/).
-#
-# History:
-# Jim Lofft 06/19/2009, find_alias_for_msmtp.sh
-# Changed by Ovidiu Constantin <ovidiu@mybox.ro> && http://blog.mybox.ro/
-# Reworked heavily by Wiesław Magusiak <w.magusiak@gmail.com>
-# and tested with mailx and cron/cronie (both calling /usr/bin/sendmail, a symlink to msmtp)
 #
 # Some advice:
 # (1) Do not make cron/cronie call msmtp instead of sendmail; Calling sendmail is default.
@@ -38,6 +32,17 @@
 # You can safely remove all "debugging parts" from the script below.                 #
 # ---------------------------------------------------------------------------------- #
 
+#----Create a log file for debugging------------
+if [[ -f ~/.sm-c.conf ]]; then
+	D=$(grep ^debug ~/.sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
+elif [[ -f /etc/sm-c.conf ]]; then
+	D=$(grep ^debug /etc/sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
+fi
+
+[[ "$D" == "1" || "$D" == "[Yy]" || "$D" == "[yY][eE][sS]" ]] \
+	&& DEBUG=/tmp/sm-${U}-$(date +%H%M%S).log || DEBUG="/dev/null"
+#----Create a log file for debugging--END-------
+
 PARAMS=" $@ "		# Parameters sendmail is called with
 TO=0				# E-mail address(es)
 MSG="$(cat)"		# Message contents passed to sendmail
@@ -45,24 +50,27 @@ CS="charset=utf-8"	# Charset for email.
 					# Needs to be set when mailx is called by cron/cronie.
 U=$USER 			# If sendmail is called from cron, U=""
 
+# -Z - the only 'native' sm-c flag/option
+if [[ "$PARAMS" = *-Z* ]]; then 		# if '-Z' flag passed, ask for a read receipt
+	MSMTP_CONFF=~/.msmtprc  			# msmtp user configuration file path
+	FROM=$(grep "^account default" $MSMTP_CONFF | sed 's/.*: //') 	# default msmtp account
+	FROM=$(sed -n "/$FROM/,/^$/p" $MSMTP_CONFF | grep from) 	# line with 'from' addres
+	FROM=$(echo $FROM |sed 's/.* //g') 							# the 'from' e-mail address
+	MSG="Disposition-Notification-To: $FROM\n"${MSG}
+	PARAMS=${PARAMS/-Z /} 				# remove '-Z' flag from parameters
+fi
+
 PREFIX=${PARAMS% -*}
-	echo PARAMS=:$PARAMS:
-	echo PREFIX=:$PREFIX:
 if [[ "$PARAMS" = "$PREFIX" ]]; then
 	PREFIX=""
 	RECIP="$PARAMS"
-	echo równe
 else
-	echo nierówne
 	RECIP=${PARAMS#$PREFIX }
-	echo recip=$RECIP
 	RECIP=${RECIP#-* }
-	echo recip=$RECIP
 	PREFIX=${PARAMS% $RECIP}
-fi
-	echo PARAMS=$PARAMS
-	echo PREFIX=$PREFIX
+fi 					# RECIP holds recipient names/addresses; PREFIX holds options
 z=""
+# Find e-mail addresses for recipient names in /etc/aliases
 if [[ -f /etc/aliases ]]; then  	# Does the file exist?
 	if [[ -n "$RECIP" ]]; then
 		# Make sure recipient addresses are "@domain" style ones
@@ -87,17 +95,6 @@ else
 		done 						# z has a leading space
 fi
 PARAMS="${PREFIX# }${z}" 			# PREFIX holds options; z holds addresses (may be empty, too)
-echo PREFIX=${PREFIX# }
-echo Adresy=${z}
-
-if [[ -f ~/.sm-c.conf ]]; then
-	D=$(grep ^debug ~/.sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
-elif [[ -f /etc/sm-c.conf ]]; then
-	D=$(grep ^debug /etc/sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
-fi
-
-[[ "$D" == "1" || "$D" == "[Yy]" || "$D" == "[yY][eE][sS]" ]] \
-	&& DEBUG=/tmp/sm-${U}-$(date +%H%M%S).log || DEBUG="/dev/null"
 
 SMTPF="$(which msmtp)"
 
@@ -178,7 +175,7 @@ elif [ "$1" = '-FCronDaemon' ]; then
 
 # other programs
 elif [ "$1" = '-t' ]; then  	# This and the next "else" could be combined, but
-	if [ -n "$DEBUG" ]; then 	# I want them separate at least for debugging reasons
+	if [ -n "$DEBUG" ]; then 	# I want them separate for at least debugging reasons
 		echo "Mail sent with the -t parameter" >> "$DEBUG"
 		echo "-------------------" >> "$DEBUG"
 	fi
