@@ -8,7 +8,7 @@
 The "sm-c" package provides a sendmail-connector script (sm-c) that comes between the sendmail symbolic link and the msmtp, an SMTP client. Effectively, sm-c connects a mail user agent (MUA) such as s-nails' or heirloom-mailx's mail(x) to msmtp.
 
 .SH SYNOPSIS
-Invoked automatically by any program calling sendmail as through the installation process, the sendmail symbolic link points at sm-c. For example, the mail(x) program provided by s-nail or hairloom-mailx typically calls sm-c with the following parmeters:
+Invoked automatically by any program calling sendmail as through the installation process, the sendmail symbolic link points at sm-c. For example, the mail(x) program provided by s-nail or heirloom-mailx typically calls sm-c with the following parameters:
 .br
 .RS
 .B sm-c
@@ -28,7 +28,7 @@ replaces users' login names with their e-mail addresses as specified in /etc/ali
 .br
 If a login name is not defined in /etc/aliases sm-c drops such a recipient.
 .IP \[bu]
-gives debugging data showing the e-mail message source and recepients;
+gives debugging data showing the e-mail message source and recipients;
 .br
 The debugging is switched on with an option in /etc/sm-c.conf or ~/.sm-c.conf.
 .br
@@ -42,7 +42,7 @@ comes in handy when cron(ie) reports events or notifies about errors;
 .IP \[bu]
 corrects the charset in the contents of e-mail message;
 .br
-UTF-8 charset is hardcoded into the script. Find the "CS" variable and change it to your liking.
+UTF-8 charset is hard coded into the script. Find the "CS" variable and change it to your liking.
 .br
 The language/charset settings for cron/cronie are different from those set in the linux system. Put these settings in your user cronjobs file (crontab -e).
 .br
@@ -103,10 +103,10 @@ When sm-c is called manually, try using options as defined for msmtp.
 .TP
 .B -t
 .br
-The "-t" option tells msmtp to source TO, CC, BCC adresses from the message contents passed. The "-t" option works the same way with mail(x).
+The "-t" option tells msmtp to source TO, CC, BCC addresses from the message contents passed. The "-t" option works the same way with mail(x).
 
 .PP
-It is possible to pass extra options from mail(x) to sm-c by using the "-O" option. However, it is important that if the option that is being passed has additional attributes those addributes must be "glued to the msmtp's -O option, e.g.
+It is possible to pass extra options from mail(x) to sm-c by using the "-O" option. However, it is important that if the option that is being passed has additional attributes those attributes must be "glued to the msmtp's -O option, e.g.
 .br
 
       mail -t \fB-O -Nsuccess,failure,delay\fR
@@ -138,18 +138,16 @@ Note that the s-nail/heirloom-mailx package is not installed automatically.
 .SH CONFIGURATION, USE AND EXAMPLES
 .PP
 .IP \[bu]
-Configuration file ~/.sm-c.conf (alternatively /etc/sm-c.conf) holds only one option:
+Configuration file \fI~/.config/sm-c/sm-c.conf\fR (alternatively \fI/etc/sm-c.conf\fR) holds only one option:
 .RS
 debug=1 (or yes/Yes; anything else means 'no')
 .RE
 .IP \[bu]
-There is no need to make cron/cronie call sm-c (or msmtp directly). Do not change anything and just let cron/cronie call sendmail, which it does by default.
+There is no need to make cron/cronie call sm-c (or msmtp) directly. Do not change anything and just let cron/cronie call sendmail, which it does by default.
 .IP \[bu]
-The same regards mail(x) - do not make it call sm-c or msmtp. Let is call sendmail, and madify only the sendmail link if necessary. The installation process does it for you.
+The same regards mail(x) - do not make it call sm-c or msmtp. Let is call sendmail, and modify only the sendmail link if necessary. The installation process does it for you.
 .IP \[bu]
-For sm-c to work correctly with cron/cronie, you must put your langage settings into your cronjobs file. Run "crontab -e" and put these or similar settings. These are for the Polish lan
-If a login name is not defined in /etc/aliases sm-c drops such a recipient.
-gage.
+For sm-c to work correctly with cron/cronie, you must put your language settings into your cronjobs file. Run "crontab -e" and put these or similar settings at the beginning of the file. These settings are for the Polish language.
 .RS
       LANG=pl_PL.UTF-8
 .br
@@ -160,7 +158,133 @@ gage.
 Failing to do that may result in your not being able to send e-mail when the subject line has your national language special characters. It is caused by the system, not sm-c.
 .RE
 .IP \[bu]
-Note that when used by cron/cronie, sm-c will be sending to the $USER all output of commands in the cronjob file. To avoid it use '>/dev/null' after each command in the conjobs file (crontab).
+Note that when used by cron/cronie, sm-c will be sending to the $USER all output of commands in the cronjob file. To avoid it use '>/dev/null' after each command in the cronjobs file (crontab).
+.IP \[bu]
+If a login/user name is not defined in /etc/aliases, sm-c drops such a recipient.
+
+.SH TYPICAL CONTENTS OF .msmtprc (EXAMPLE)
+# Accounts will inherit settings from this section
+.br
+defaults
+.br
+logfile /tmp/msmtp.log
+.br
+auth           on
+.br
+tls            on
+.br
+#aliases       /etc/aliases 		# This line should rather be in /etc/msmtprc
+.br
+
+.br
+\fBaccount        gmail\fR
+.br
+host           smtp.gmail.com
+.br
+port           587
+.br
+user           user@gmail.com
+.br
+passwordeval   "gpg -d /path/to/password_file1"
+.br
+from           user@gmail.com
+.br
+tls_trust_file /usr/share/ca-certificates/mozilla/Equifax_Secure_CA.crt
+.br
+
+# Onet email service
+.br
+\fBaccount 		onet\fR
+.br
+host 		smtp.poczta.onet.pl
+.br
+port 		587
+.br
+user 		user2@poczta.onet.pl
+.br
+password   	"your_secret_password"
+.br
+from  		user2@poczta.onet.pl
+.br
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+.br
+
+\fBaccount 	 	other\fR
+.br
+host       	mail.domain.com
+.br
+port       	587
+.br
+user       	other_user
+.br
+passwordeval   "gpg -d /path/to/password_file2"
+.br
+from       	other_user@domain.com
+.br
+tls_fingerprint AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD
+.br
+# See \fIwww.madboa.com/geek/openssl/#cert-retrieve\fR
+.br
+# for info on retrieving certificates and fingerprints.
+.br
+
+# Set a default account
+.br
+\fBaccount default\fR : other
+.br
+
+.SH TYPICAL CONTENTS OF .mailrc (EXAMPLE THAT GOES WITH THE EXAMPLE ABOVE)
+.br
+# $ mail -s "subject line" -a /path/file recipient@email.com < /path/body.txt
+.br
+# cat /path/body.txt | $ mail -s "subject line" -a /path/file recipient@email.com
+.br
+# cat /path/header+body.txt | $ mail -t
+.br
+
+\fBaccount default\fR {
+.br
+set from="name1@domain.org"
+.br
+set message-sendmail-extra-arguments="-a other"
+.br
+}
+.br
+
+\fBaccount gmail\fR {
+.br
+set from="name2@gmail.com"
+.br
+set message-sendmail-extra-arguments="-a gmail"
+.br
+}
+.br
+
+\fBaccount onet\fR {
+.br
+set from="name3@poczta.onet.pl"
+.br
+set sendmail=/usr/bin/msmtp   				# Don't do it.
+.br
+set message-sendmail-extra-arguments="-a onet -S ssl-verify=ignore"
+.br
+}
+.br
+
+\fBaccount other\fR {
+.br
+set from="name4@other.org"
+.br
+#set ttycharset=utf-8
+.br
+#set sendcharsets=utf-8
+.br
+#set encoding=8bit
+.br
+set message-sendmail-extra-arguments="-a other"
+.br
+}
+.br
 
 .SH HISTORY
 .PP
@@ -176,9 +300,13 @@ Read about the sendmail's aliases file (/etc/aliases). For instance here:
 .I 	http://www.gsp.com/cgi-bin/man.cgi?topic=aliases
 .RE
 .IP \[bu]
-msmtp man pages
+msmtp man pages and the files in /usr/share/doc/msmtp
 .IP \[bu]
 s-nail (heirloom-mailx) man pages
+.IP \[bu]
+Read
+.I http://www.madboa.com/geek/openssl
+about retrieving certificates and fingerprints.
 
 .SH BUGS
 Please contact the author if you find any.

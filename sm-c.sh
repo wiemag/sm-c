@@ -1,6 +1,7 @@
 #!/bin/bash
 # sm-c.sh v1.1 by Wiesław Magusiak (2013-07-31)
 # sm-c.sh v1.5.1 (2014-03-08)
+# sm-c.sh v1.5.2 (2014-03-14): ~/.sm-c.conf moved to ~/.config/sm-c/sm-c.conf
 # A "sendmail" replacement. Requires "msmtp" installed.
 # Put this script anywhere (e.g. /usr/local/bin/) and create a symbolic link:
 #
@@ -34,7 +35,7 @@
 
 #----Create a log file for debugging------------
 if [[ -f ~/.sm-c.conf ]]; then
-	D=$(grep ^debug ~/.sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
+	D=$(grep ^debug ~/.config/sm-c/sm-c.conf|cut -d= -f2)	# set debug={1, y, Y, yes,...}
 elif [[ -f /etc/sm-c.conf ]]; then
 	D=$(grep ^debug /etc/sm-c.conf|cut -d= -f2)		# set debug={1, y, Y, yes, Yes, yEs,...}
 fi
